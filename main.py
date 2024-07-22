@@ -34,13 +34,29 @@ def insert_data_to_db(filename='nuevas_filas.csv'):
         df = pd.read_csv(filename)
         logging.info(f'Archivo CSV en pandas correctamente.')
 
-        # columna FECHA_COPIA con la fecha actual
+        # Columna FECHA_COPIA
         df['FECHA_COPIA'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Insertar los datos en la base de datos
         with engine.connect() as connection:
-            df.to_sql('unificado', con=connection, if_exists='append', index=False)
-        logging.info(f'Datos insertados en la tabla Unificado correctamente.')
+            result = connection.execute(f"SELECT COUNT(*) FROM unificado")
+            initial_row_count = result.scalar()
+
+            df.to_sql('inificado', connection, if_exists='append', index=False)
+
+            result = connection.execute(f"SELECT COUNT(*) FROM unificado")
+            final_row_count = result.scalar()
+
+            added_rows = final_row_count - initial_row_count
+            logging.info(f'Se agregaron {added_rows} filas a la bd.')
+
+        # Verificar que la cantidad de filas del archivo coincide con la diferencia de filas de la tabla.
+        if added_rows == len(df):
+            logging.info('Todas las filas se cargaron correctamente.')
+        else:
+            logging.error('Discrepancia en el número de filas cargadas.')
+
+
+
     except SQLAlchemyError as e:
         logging.error(f'Error al insertar los datos en la base de datos: {e}')
     except Exception as e:
