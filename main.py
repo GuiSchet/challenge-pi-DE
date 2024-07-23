@@ -34,29 +34,25 @@ def insert_data_to_db(filename='nuevas_filas.csv'):
         df = pd.read_csv(filename)
         logging.info(f'Archivo CSV en pandas correctamente.')
 
-        # Columna FECHA_COPIA
+        # columna FECHA_COPIA con la fecha actual
         df['FECHA_COPIA'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+        # Insertar los datos en la base de datos
         with engine.connect() as connection:
-            result = connection.execute(f"SELECT COUNT(*) FROM unificado")
-            initial_row_count = result.scalar()
+            result = pd.read_sql('SELECT COUNT(*) FROM unificado', con=connection)
+            rows_before = result.iloc[0,0]
+            df.to_sql('unificado', con=connection, if_exists='append', index=False)
+            result = pd.read_sql('SELECT COUNT(*) FROM unificado', con=connection)
+            rows_after = result.iloc[0,0]
 
-            df.to_sql('inificado', connection, if_exists='append', index=False)
-
-            result = connection.execute(f"SELECT COUNT(*) FROM unificado")
-            final_row_count = result.scalar()
-
-            added_rows = final_row_count - initial_row_count
+            added_rows = rows_after - rows_before
             logging.info(f'Se agregaron {added_rows} filas a la bd.')
-
         # Verificar que la cantidad de filas del archivo coincide con la diferencia de filas de la tabla.
         if added_rows == len(df):
             logging.info('Todas las filas se cargaron correctamente.')
         else:
             logging.error('Discrepancia en el número de filas cargadas.')
-
-
-
+        logging.info(f'Datos insertados en la tabla Unificado correctamente.')
     except SQLAlchemyError as e:
         logging.error(f'Error al insertar los datos en la base de datos: {e}')
     except Exception as e:
